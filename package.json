@@ -1,0 +1,28 @@
+{
+  "name": "libp2p-exchange-rendezvous",
+  "version": "0.0.0",
+  "description": "Data Exchange component that uses other peers to exchange requests/responses",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "data",
+    "exchange",
+    "rendezvous",
+    "libp2p"
+  ],
+  "author": "Maciej Krüger <mkg20001@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "debug": "^3.1.0",
+    "interface-data-exchange": "0.0.0",
+    "peer-id": "github:mkg20001/js-peer-id",
+    "protons": "^1.0.1",
+    "pull-protocol-buffers": "^0.1.2",
+    "pull-stream": "^3.6.8"
+  },
+  "devDependencies": {
+    "aegir": "^14.0.0"
+  }
+}
