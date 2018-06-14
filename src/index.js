@@ -26,7 +26,7 @@ class Exchange extends ExchangeBase {
     }
 
     this.swarm.on('peer:connect', peer => { // TODO: unhandle this event on .stop()
-      this.swarm.dial(peer, TAG, (err, conn) => {
+      this.swarm.dialProtocol(peer, TAG, (err, conn) => {
         if (err) {
           return log(err)
         }

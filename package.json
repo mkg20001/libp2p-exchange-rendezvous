@@ -4,7 +4,7 @@
   "description": "Data Exchange component that uses other peers to exchange requests/responses",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "aegir test"
   },
   "keywords": [
     "data",
@@ -23,6 +23,7 @@
     "pull-stream": "^3.6.8"
   },
   "devDependencies": {
-    "aegir": "^14.0.0"
+    "aegir": "^14.0.0",
+    "interface-data-exchange-devdeps": "0.0.1"
   }
 }

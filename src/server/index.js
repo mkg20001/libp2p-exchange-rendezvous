@@ -14,10 +14,6 @@ class Server {
 
   start () {
     this.swarm.handle(TAG, (proto, conn) => {
-      if (err) {
-        return log(err)
-      }
-
       conn.getPeerInfo((err, pi) => {
         if (err) {
           return log(err)
@@ -42,3 +38,5 @@ class Server {
     this.swarm.unhandle(TAG)
   }
 }
+
+module.exports = Server
