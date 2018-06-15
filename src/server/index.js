@@ -32,7 +32,7 @@ class Server {
           conn
         )
 
-        this.rpc[pi.id.toB58String()] = rpc
+        this.rpc[pi.id.toB58String()] = rpc.methods
       })
     })
   }

@@ -69,6 +69,8 @@ module.exports = (myId, requestHandler) => {
           source.push(out)
         }
 
+        log('got request %s', data.ns)
+
         Id.createFromProtobuf(data.remote, (err, remoteId) => {
           if (err) {
             log(err)
@@ -204,8 +206,10 @@ module.exports = (myId, requestHandler) => {
             source.push({
               type: Type.REQUEST,
               id: rid,
+              ns,
               data,
-              signature
+              signature,
+              remote: Buffer.from(remoteId.toB58String())
             })
           })
         })

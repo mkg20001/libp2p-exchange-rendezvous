@@ -86,20 +86,25 @@ module.exports = (pi, server) => {
           source.push(out)
         }
 
-        let remote = this.rpc[String(data.remote)]
+        let remote = server.rpc[String(data.remote)]
+        let srcId = server.ids[pi.id.toB58String()]
 
         if (!remote) {
           return cb(ErrorType.E_NOT_FOUND)
         }
 
-        remote.forwardRequest(this.ids[pi.id.toB58String()], data.data, data.signature, (err, res) => {
+        if (!srcId) {
+          return cb(ErrorType.E_OTHER)
+        }
+
+        remote.forwardRequest(srcId, data.ns, data.data, data.signature, (err, res) => {
           if (err) {
             return cb(err instanceof Error ? ErrorType.E_OTHER : err)
           }
 
           return cb(null, {
-            data: data.data,
-            signature: data.signature
+            data: res.data,
+            signature: res.signature
           })
         })
 
@@ -135,7 +140,7 @@ module.exports = (pi, server) => {
     sink,
     methods: {
       online: () => online,
-      requestForward: (remote, data, signature, cb) => {
+      forwardRequest: (remote, ns, data, signature, cb) => {
         if (!online) {
           return cb(new Error('Not online!'))
         }
@@ -147,6 +152,7 @@ module.exports = (pi, server) => {
         source.push({
           type: Type.REQUEST,
           id: rid,
+          ns,
           data,
           signature,
           remote
