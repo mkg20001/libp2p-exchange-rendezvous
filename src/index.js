@@ -18,6 +18,7 @@ class Exchange extends ExchangeBase {
     if (options && options.allowServer) {
       this.server = new Server(swarm, options)
     }
+    this.rpc = []
   }
 
   start (cb) {

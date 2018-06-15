@@ -1,9 +1,20 @@
 'use strict'
 
+/* eslint-disable max-nested-callbacks */
+
+const debug = require('debug')
+const log = debug('libp2p:exchange:rendezvous:rpc')
+
 const Pushable = require('pull-pushable')
 const pull = require('pull-stream')
 const {Type, Error, ETABLE} = require('./proto.js')
 const Id = require('peer-id')
+const once = require('once')
+const wrap = (cb) => {
+  cb = once(cb)
+  setTimeout(() => cb(new Error('Timeout')), 10 * 1000)
+  return cb
+}
 
 module.exports = (myId, requestHandler) => {
   let online = true
@@ -35,6 +46,8 @@ module.exports = (myId, requestHandler) => {
             return cb(null, id)
           })
         }
+
+        break
       }
       case Type.REQUEST: {
         let cb = (err, res) => {
@@ -99,6 +112,8 @@ module.exports = (myId, requestHandler) => {
             })
           })
         })
+
+        break
       }
       case Type.RESPONSE: {
         let cb = cbs[data.id]
@@ -124,6 +139,11 @@ module.exports = (myId, requestHandler) => {
             })
           })
         }
+
+        break
+      }
+      default: {
+        log('rpc got unknown type %s', data.type)
       }
     }
   }, e => {
@@ -147,13 +167,13 @@ module.exports = (myId, requestHandler) => {
           return cb(new Error('Not online!'))
         }
 
-        let id = id++ * 2
-        cbs[id] = wrap(cb)
-        cbs[id].requestedId = b58
+        let rid = id++ * 2
+        cbs[rid] = wrap(cb)
+        cbs[rid].requestedId = b58
 
         source.push({
           type: Type.ID_LOOKUP,
-          id,
+          id: rid,
           remote: Buffer.from(b58)
         })
       },
@@ -172,14 +192,14 @@ module.exports = (myId, requestHandler) => {
               return cb(err)
             }
 
-            let id = id++ * 2
+            let rid = id++ * 2
 
-            cbs[id] = wrap(cb)
-            cbs[id].remoteId = remoteId
+            cbs[rid] = wrap(cb)
+            cbs[rid].remoteId = remoteId
 
             source.push({
               type: Type.REQUEST,
-              id,
+              id: rid,
               data,
               signature
             })

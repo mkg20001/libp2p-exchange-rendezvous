@@ -1,5 +1,8 @@
 'use strict'
 
+const debug = require('debug')
+const log = debug('libp2p:exchange:rendezvous:server:rpc')
+
 const Pushable = require('pull-pushable')
 const pull = require('pull-stream')
 const {Type, Error, ETABLE} = require('../proto.js')
@@ -52,13 +55,22 @@ module.exports = (pi, server) => {
         } else {
           cb(Error.E_NOT_FOUND)
         }
+
+        break
       }
       case Type.REQUEST: {
         // we get a request (data.data, data.signature) to forward to data.remote (b58string) and then get a response to forward back
         // TODO: add
+
+        break
       }
       case Type.RESPONSE: {
         // TODO: add
+
+        break
+      }
+      default: {
+        log('rpc got unknown type %s', data.type)
       }
     }
   }, e => {

@@ -16,10 +16,10 @@
   "license": "MIT",
   "dependencies": {
     "debug": "^3.1.0",
-    "interface-data-exchange": "0.0.0",
+    "interface-data-exchange": "0.0.1",
     "peer-id": "github:mkg20001/js-peer-id",
     "protons": "^1.0.1",
-    "pull-protocol-buffers": "^0.1.2",
+    "pull-protocol-buffers": "~0.1.2",
     "pull-stream": "^3.6.8"
   },
   "devDependencies": {

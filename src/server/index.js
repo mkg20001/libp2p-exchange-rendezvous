@@ -1,5 +1,8 @@
 'use strict'
 
+const debug = require('debug')
+const log = debug('libp2p:exchange:rendezvous:server')
+
 const ppb = require('pull-protocol-buffers')
 const pull = require('pull-stream')
 const _RPC = require('./rpc')
