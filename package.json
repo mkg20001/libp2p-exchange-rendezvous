@@ -36,5 +36,8 @@
   "bugs": {
     "url": "https://github.com/mkg20001/libp2p-exchange-rendezvous/issues"
   },
-  "homepage": "https://github.com/mkg20001/libp2p-exchange-rendezvous#readme"
+  "homepage": "https://github.com/mkg20001/libp2p-exchange-rendezvous#readme",
+  "contributors": [
+    "Maciej Krüger <mkg20001@gmail.com>"
+  ]
 }
