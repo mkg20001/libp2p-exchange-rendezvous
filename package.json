@@ -1,6 +1,6 @@
 {
   "name": "libp2p-exchange-rendezvous",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Data Exchange component that uses other peers to exchange requests/responses",
   "main": "index.js",
   "scripts": {
