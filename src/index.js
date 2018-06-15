@@ -15,7 +15,7 @@ const {RPC} = require('./proto.js')
 class Exchange extends ExchangeBase {
   constructor (swarm, options) {
     super(swarm)
-    if (options && options.allowServer) {
+    if (options && options.enableServer) {
       this.server = new Server(swarm, options)
     }
     this.rpc = []
@@ -60,6 +60,10 @@ class Exchange extends ExchangeBase {
   _rpc (call, ...args) {
     this.rpc = this.rpc.filter(r => r.online()) // remove disconnected peers
     const cb = args.pop()
+
+    if (!this.rpc.length) {
+      return cb(new Error('No rendezvous-points connected!'))
+    }
 
     let list = this.rpc.slice(0)
 

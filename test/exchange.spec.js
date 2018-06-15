@@ -15,7 +15,7 @@ tests({
       addrs: ['/ip4/127.0.0.1/tcp/5394/ws']
     },
     exchangeM: {
-      allowServer: true
+      enableServer: true
     }
   },
   before: (eA, eB, eM, cb) => {
