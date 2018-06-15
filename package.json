@@ -25,5 +25,16 @@
   "devDependencies": {
     "aegir": "^14.0.0",
     "interface-data-exchange-devdeps": "0.0.1"
-  }
+  },
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mkg20001/libp2p-exchange-rendezvous.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mkg20001/libp2p-exchange-rendezvous/issues"
+  },
+  "homepage": "https://github.com/mkg20001/libp2p-exchange-rendezvous#readme"
 }
