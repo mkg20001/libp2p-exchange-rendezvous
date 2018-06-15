@@ -57,24 +57,49 @@ class Exchange extends ExchangeBase {
     cb()
   }
 
+  _rpc (call, ...args) {
+    this.rpc = this.rpc.filter(r => r.online()) // remove disconnected peers
+    const cb = args.pop()
+
+    let list = this.rpc.slice(0)
+
+    function tryPeer (rpc) {
+      rpc[call](...args, (err, res) => {
+        if (err) {
+          let next = list.shift()
+          if (!next) {
+            return cb(err)
+          } else {
+            return tryPeer(next)
+          }
+        }
+
+        return cb(err, res)
+      })
+    }
+
+    tryPeer(list.shift())
+  }
+
   _getPubKey (id, cb) {
     if (id.pubKey) { // already has pubKey, nothing to do
       return cb(null, id)
     }
 
-    // TODO: try peerMap and add a cache
+    // TODO: check peerBook for key, add a cache
 
-    // TODO: do .lookup(id.toB58String(), cb) rpc call
+    this._rpc('lookup', id.toB58String(), cb)
   }
 
   request (peerId, ns, data, cb) {
-    this.rpc = this.rpc.filter(r => r.online()) // remove disconnected peers
-
     this._getPubKey(peerId, (err, peerId) => {
       if (err) {
         return cb(err)
       }
 
+      this._rpc('request', peerId, ns, data, (err, res) => {
+        console.log('req', err, res)
+      })
       // TODO: do .request(peerId, ns, data, cb) rpc call
     })
   }

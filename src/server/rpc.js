@@ -5,7 +5,7 @@ const log = debug('libp2p:exchange:rendezvous:server:rpc')
 
 const Pushable = require('pull-pushable')
 const pull = require('pull-stream')
-const {Type, Error, ETABLE} = require('../proto.js')
+const {Type, ErrorType, ETABLE} = require('../proto.js')
 const Id = require('peer-id')
 
 module.exports = (pi, server) => {
@@ -16,6 +16,8 @@ module.exports = (pi, server) => {
 
   const source = Pushable()
   const sink = pull.drain(data => {
+    log('got %s %s', data.type, data.id)
+
     switch (data.type) {
       case Type.ID_LOOKUP: {
         if (!data.id) {
@@ -29,7 +31,7 @@ module.exports = (pi, server) => {
             }
 
             log('added ID %s', id.toB58String())
-            server.ids[pi.id.toB58String()] = id
+            server.ids[pi.id.toB58String()] = data.remote
           })
         }
 
@@ -45,15 +47,17 @@ module.exports = (pi, server) => {
             Object.assign(out, res)
           }
 
-          source.push(res)
+          source.push(out)
         }
 
         let id = server.ids[String(data.remote)]
 
         if (id) {
+          log('id found %s', String(data.remote))
           cb(null, {remote: id})
         } else {
-          cb(Error.E_NOT_FOUND)
+          log('id 404 %s', String(data.remote))
+          cb(ErrorType.E_NOT_FOUND)
         }
 
         break

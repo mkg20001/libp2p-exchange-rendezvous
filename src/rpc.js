@@ -7,7 +7,7 @@ const log = debug('libp2p:exchange:rendezvous:rpc')
 
 const Pushable = require('pull-pushable')
 const pull = require('pull-stream')
-const {Type, Error, ETABLE} = require('./proto.js')
+const {Type, ErrorType, ETABLE} = require('./proto.js')
 const Id = require('peer-id')
 const once = require('once')
 const wrap = (cb) => {
@@ -24,11 +24,15 @@ module.exports = (myId, requestHandler) => {
 
   const source = Pushable()
   const sink = pull.drain(data => {
+    log('got %s %s', data.type, data.id)
+
     switch (data.type) {
       case Type.ID_LOOKUP: {
         let cb = cbs[data.id]
         if (cb && cb.requestedId) {
           delete cbs[data.id]
+
+          log('got id lookup response %s', data.id)
 
           if (data.error) {
             return cb(new Error(ETABLE[data.error] || 'N/A'))
@@ -39,7 +43,7 @@ module.exports = (myId, requestHandler) => {
               return cb(err)
             }
 
-            if (Id.toB58String() !== cb.requestedId) {
+            if (id.toB58String() !== cb.requestedId) {
               return cb(new Error('Id is not matching!'))
             }
 
@@ -62,47 +66,47 @@ module.exports = (myId, requestHandler) => {
             Object.assign(out, res)
           }
 
-          source.push(res)
+          source.push(out)
         }
 
         Id.createFromProtobuf(data.remote, (err, remoteId) => {
           if (err) {
             log(err)
-            return cb(Error.E_NACK)
+            return cb(ErrorType.E_NACK)
           }
 
           remoteId.pubKey.verify(data.data, data.signature, (err, ok) => {
             if (err || !ok) {
               log(err || 'Signature check failed')
-              return cb(Error.E_NACK)
+              return cb(ErrorType.E_NACK)
             }
 
             myId.privKey.decrypt(data.data, (err, request) => {
               if (err) {
                 log(err)
-                return cb(Error.E_NACK)
+                return cb(ErrorType.E_NACK)
               }
 
               requestHandler(data.ns, remoteId, request, (err, res) => {
                 if (err) {
                   log(err)
-                  return cb(Error.E_NACK)
+                  return cb(ErrorType.E_NACK)
                 }
 
                 if (res.nack) {
-                  return cb(Error.E_NACK)
+                  return cb(ErrorType.E_NACK)
                 }
 
                 remoteId.pubKey.encrypt(res.result, (err, result) => {
                   if (err) {
                     log(err)
-                    return cb(Error.E_OTHER)
+                    return cb(ErrorType.E_OTHER)
                   }
 
                   myId.privKey.sign(result, (err, signature) => {
                     if (err) {
                       log(err)
-                      return cb(Error.E_OTHER)
+                      return cb(ErrorType.E_OTHER)
                     }
 
                     cb(null, {data: result, signature})

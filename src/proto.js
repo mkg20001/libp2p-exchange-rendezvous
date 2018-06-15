@@ -24,7 +24,8 @@ ClientTypes {
 
 */
 
-enum Error {
+enum ErrorType {
+  OK          = 0;
   E_NOT_FOUND = 1; // peer not connected
   E_NACK      = 2; // NACK response
   E_TIMEOUT   = 3; // timeout occured
@@ -41,7 +42,7 @@ message RPC {
   required Type type = 1;
   required int64 id = 2; // unique request id (client initiated=even, server initiated=odd)
   int64 timestamp = 3;   // TODO: use this to prevent replay attacks
-  Error error = 4;
+  ErrorType error = 4;
   string ns = 5;
   bytes data = 6;        // max 1mb (1024 ^ 2)
   bytes signature = 7;

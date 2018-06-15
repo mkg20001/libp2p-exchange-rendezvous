@@ -16,7 +16,7 @@
   "license": "MIT",
   "dependencies": {
     "debug": "^3.1.0",
-    "interface-data-exchange": "0.0.1",
+    "interface-data-exchange": "0.0.2",
     "peer-id": "github:mkg20001/js-peer-id",
     "protons": "^1.0.1",
     "pull-protocol-buffers": "~0.1.2",
