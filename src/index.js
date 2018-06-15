@@ -97,10 +97,7 @@ class Exchange extends ExchangeBase {
         return cb(err)
       }
 
-      this._rpc('request', peerId, ns, data, (err, res) => {
-        console.log('req', err, res)
-      })
-      // TODO: do .request(peerId, ns, data, cb) rpc call
+      this._rpc('request', peerId, ns, data, cb)
     })
   }
 }
