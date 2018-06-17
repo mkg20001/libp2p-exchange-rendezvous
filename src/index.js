@@ -92,15 +92,19 @@ class Exchange extends ExchangeBase {
 
     // TODO: check peerBook for key, add a cache
 
+    log('looking up pubKey for %s', id.toB58String())
+
     this._rpc('lookup', id.toB58String(), cb)
   }
 
   request (peerId, ns, data, cb) {
+    log('request on %s to %s', ns, peerId.toB58String())
     this._getPubKey(peerId, (err, peerId) => {
       if (err) {
         return cb(err)
       }
 
+      log('sending request on %s to %s', ns, peerId.toB58String())
       this._rpc('request', peerId, ns, data, cb)
     })
   }

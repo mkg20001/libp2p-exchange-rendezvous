@@ -16,6 +16,8 @@ class Server {
   }
 
   start () {
+    log('server started')
+
     this.swarm.handle(TAG, (proto, conn) => {
       conn.getPeerInfo((err, pi) => {
         if (err) {
@@ -38,6 +40,10 @@ class Server {
   }
 
   stop () {
+    log('server stopped')
+
+    // TODO: close conns
+
     this.swarm.unhandle(TAG)
   }
 }
