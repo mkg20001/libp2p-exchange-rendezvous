@@ -85,28 +85,28 @@ class Exchange extends ExchangeBase {
     tryPeer(list.shift())
   }
 
-  _getPubKey (id, cb) {
-    if (id.pubKey) { // already has pubKey, nothing to do
-      return cb(null, id)
-    }
+  // _getPubKey (id, cb) {
+  //   if (id.pubKey) { // already has pubKey, nothing to do
+  //     return cb(null, id)
+  //   }
 
-    // TODO: check peerBook for key, add a cache
+  //   // TODO: check peerBook for key, add a cache
 
-    log('looking up pubKey for %s', id.toB58String())
+  //   log('looking up pubKey for %s', id.toB58String())
 
-    this._rpc('lookup', id.toB58String(), cb)
-  }
+  //   this._rpc('lookup', id.toB58String(), cb)
+  // }
 
   request (peerId, ns, data, cb) {
     log('request on %s to %s', ns, peerId.toB58String())
-    this._getPubKey(peerId, (err, peerId) => {
-      if (err) {
-        return cb(err)
-      }
+    // this._getPubKey(peerId, (err, peerId) => {
+    //   if (err) {
+    //     return cb(err)
+    //   }
 
-      log('sending request on %s to %s', ns, peerId.toB58String())
+    //   log('sending request on %s to %s', ns, peerId.toB58String())
       this._rpc('request', peerId, ns, data, cb)
-    })
+    // })
   }
 }
 
