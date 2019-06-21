@@ -21,8 +21,8 @@ class Exchange extends ExchangeBase {
 
     this.secure = true
 
-    if (options && options.secure) {
-      this.secure = options.secure
+    if (options && !options.secure) {
+      this.secure = false
     }
     
     this.rpc = []
