@@ -19,10 +19,10 @@ class Exchange extends ExchangeBase {
       this.server = new Server(swarm, options)
     }
 
-    this.secure = true
+    this.secure = false
 
-    if (options && !options.secure) {
-      this.secure = false
+    if (options && options.secure) {
+      this.secure = true
     }
 
     this.rpc = []
