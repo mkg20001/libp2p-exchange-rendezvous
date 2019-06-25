@@ -24,7 +24,7 @@ class Exchange extends ExchangeBase {
     if (options && !options.secure) {
       this.secure = false
     }
-    
+
     this.rpc = []
   }
 
@@ -112,7 +112,7 @@ class Exchange extends ExchangeBase {
         if (err) {
           return cb(err)
         }
-  
+
         log('sending request on %s to %s', ns, peerId.toB58String())
         this._rpc('request', peerId, ns, data, cb)
       })

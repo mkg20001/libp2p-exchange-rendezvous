@@ -83,35 +83,35 @@ module.exports = (myId, requestHandler, secure) => {
                 log(err || 'Signature check failed')
                 return cb(ErrorType.E_NACK)
               }
-  
+
               myId.privKey.decrypt(data.data, (err, request) => {
                 if (err) {
                   log(err)
                   return cb(ErrorType.E_NACK)
                 }
-  
+
                 requestHandler(data.ns, remoteId, request, (err, res) => {
                   if (err) {
                     log(err)
                     return cb(ErrorType.E_NACK)
                   }
-  
+
                   if (res.nack) {
                     return cb(ErrorType.E_NACK)
                   }
-  
-                  remoteId.pubKey.encrypt(reress.result, (err, result) => {
+
+                  remoteId.pubKey.encrypt(res.result, (err, result) => {
                     if (err) {
                       log(err)
                       return cb(ErrorType.E_OTHER)
                     }
-  
+
                     myId.privKey.sign(result, (err, signature) => {
                       if (err) {
                         log(err)
                         return cb(ErrorType.E_OTHER)
                       }
-  
+
                       cb(null, {data: result, signature})
                     })
                   })
@@ -151,12 +151,12 @@ module.exports = (myId, requestHandler, secure) => {
               if (err || !ok) {
                 return cb(err || new Error('Signature check failed'))
               }
-  
+
               myId.privKey.decrypt(data.data, (err, result) => {
                 if (err) {
                   return cb(err)
                 }
-  
+
                 return cb(null, result)
               })
             })
@@ -218,7 +218,7 @@ module.exports = (myId, requestHandler, secure) => {
             id: rid,
             ns,
             data,
-            remote: Buffer.from(remoteId.toB58String()) 
+            remote: Buffer.from(remoteId.toB58String())
           }
 
           if (signature) {
@@ -227,13 +227,13 @@ module.exports = (myId, requestHandler, secure) => {
 
           source.push(request)
         }
-        
+
         if (secure) {
           remoteId.pubKey.encrypt(data, (err, data) => {
             if (err) {
               return cb(err)
             }
-  
+
             myId.privKey.sign(data, (err, signature) => {
               if (err) {
                 return cb(err)
