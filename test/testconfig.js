@@ -2,7 +2,7 @@
 
 const {parallel} = require('async')
 
-module.exports = {
+module.exports = (secure) => ({
   opt: {
     peerA: {
       addrs: []
@@ -12,6 +12,12 @@ module.exports = {
     },
     peerM: {
       addrs: ['/ip4/127.0.0.1/tcp/5394/ws']
+    },
+    exchangeA: {
+      secure
+    },
+    exchangeB: {
+      secure
     },
     exchangeM: {
       enableServer: true
@@ -27,4 +33,4 @@ module.exports = {
     })
   },
   Exchange: require('../src')
-}
+})

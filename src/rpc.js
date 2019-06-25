@@ -16,7 +16,7 @@ const wrap = (cb) => {
   return cb
 }
 
-module.exports = (myId, requestHandler) => {
+module.exports = (myId, requestHandler, secure) => {
   let online = true
 
   let cbs = {}
@@ -77,46 +77,61 @@ module.exports = (myId, requestHandler) => {
             return cb(ErrorType.E_NACK)
           }
 
-          remoteId.pubKey.verify(data.data, data.signature, (err, ok) => {
-            if (err || !ok) {
-              log(err || 'Signature check failed')
-              return cb(ErrorType.E_NACK)
-            }
-
-            myId.privKey.decrypt(data.data, (err, request) => {
+          if (secure) {
+            remoteId.pubKey.verify(data.data, data.signature, (err, ok) => {
+              if (err || !ok) {
+                log(err || 'Signature check failed')
+                return cb(ErrorType.E_NACK)
+              }
+  
+              myId.privKey.decrypt(data.data, (err, request) => {
+                if (err) {
+                  log(err)
+                  return cb(ErrorType.E_NACK)
+                }
+  
+                requestHandler(data.ns, remoteId, request, (err, res) => {
+                  if (err) {
+                    log(err)
+                    return cb(ErrorType.E_NACK)
+                  }
+  
+                  if (res.nack) {
+                    return cb(ErrorType.E_NACK)
+                  }
+  
+                  remoteId.pubKey.encrypt(reress.result, (err, result) => {
+                    if (err) {
+                      log(err)
+                      return cb(ErrorType.E_OTHER)
+                    }
+  
+                    myId.privKey.sign(result, (err, signature) => {
+                      if (err) {
+                        log(err)
+                        return cb(ErrorType.E_OTHER)
+                      }
+  
+                      cb(null, {data: result, signature})
+                    })
+                  })
+                })
+              })
+            })
+          } else {
+            requestHandler(data.ns, remoteId, data.data, (err, res) => {
               if (err) {
                 log(err)
                 return cb(ErrorType.E_NACK)
               }
 
-              requestHandler(data.ns, remoteId, request, (err, res) => {
-                if (err) {
-                  log(err)
-                  return cb(ErrorType.E_NACK)
-                }
+              if (res.nack) {
+                return cb(ErrorType.E_NACK)
+              }
 
-                if (res.nack) {
-                  return cb(ErrorType.E_NACK)
-                }
-
-                remoteId.pubKey.encrypt(res.result, (err, result) => {
-                  if (err) {
-                    log(err)
-                    return cb(ErrorType.E_OTHER)
-                  }
-
-                  myId.privKey.sign(result, (err, signature) => {
-                    if (err) {
-                      log(err)
-                      return cb(ErrorType.E_OTHER)
-                    }
-
-                    cb(null, {data: result, signature})
-                  })
-                })
-              })
+              cb(null, {data: res.result})
             })
-          })
+          }
         })
 
         break
@@ -131,19 +146,23 @@ module.exports = (myId, requestHandler) => {
             return cb(new Error(ETABLE[data.error] || 'N/A'))
           }
 
-          cb.remoteId.pubKey.verify(data.data, data.signature, (err, ok) => {
-            if (err || !ok) {
-              return cb(err || new Error('Signature check failed'))
-            }
-
-            myId.privKey.decrypt(data.data, (err, result) => {
-              if (err) {
-                return cb(err)
+          if (secure) {
+            cb.remoteId.pubKey.verify(data.data, data.signature, (err, ok) => {
+              if (err || !ok) {
+                return cb(err || new Error('Signature check failed'))
               }
-
-              return cb(null, result)
+  
+              myId.privKey.decrypt(data.data, (err, result) => {
+                if (err) {
+                  return cb(err)
+                }
+  
+                return cb(null, result)
+              })
             })
-          })
+          } else {
+            return cb(null, data.data)
+          }
         }
 
         break
@@ -188,31 +207,43 @@ module.exports = (myId, requestHandler) => {
           return cb(new Error('Not online!'))
         }
 
-        remoteId.pubKey.encrypt(data, (err, data) => {
-          if (err) {
-            return cb(err)
+        const sendRequest = (data, signature) => {
+          let rid = id++ * 2
+
+          cbs[rid] = wrap(cb)
+          cbs[rid].remoteId = remoteId
+
+          const request = {
+            type: Type.REQUEST,
+            id: rid,
+            ns,
+            data,
+            remote: Buffer.from(remoteId.toB58String()) 
           }
 
-          myId.privKey.sign(data, (err, signature) => {
+          if (signature) {
+            request.signature = signature
+          }
+
+          source.push(request)
+        }
+        
+        if (secure) {
+          remoteId.pubKey.encrypt(data, (err, data) => {
             if (err) {
               return cb(err)
             }
-
-            let rid = id++ * 2
-
-            cbs[rid] = wrap(cb)
-            cbs[rid].remoteId = remoteId
-
-            source.push({
-              type: Type.REQUEST,
-              id: rid,
-              ns,
-              data,
-              signature,
-              remote: Buffer.from(remoteId.toB58String())
+  
+            myId.privKey.sign(data, (err, signature) => {
+              if (err) {
+                return cb(err)
+              }
+              sendRequest(data, signature)
             })
           })
-        })
+        } else {
+          sendRequest(data)
+        }
       }
     }
   }

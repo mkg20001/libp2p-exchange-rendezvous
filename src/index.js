@@ -18,6 +18,13 @@ class Exchange extends ExchangeBase {
     if (options && options.enableServer) {
       this.server = new Server(swarm, options)
     }
+
+    this.secure = true
+
+    if (options && !options.secure) {
+      this.secure = false
+    }
+    
     this.rpc = []
   }
 
@@ -32,7 +39,7 @@ class Exchange extends ExchangeBase {
           return log(err)
         }
 
-        let rpc = _RPC(this.swarm.peerInfo.id, this._handle.bind(this))
+        let rpc = _RPC(this.swarm.peerInfo.id, this._handle.bind(this), this.secure)
 
         pull(
           conn,
@@ -99,14 +106,19 @@ class Exchange extends ExchangeBase {
 
   request (peerId, ns, data, cb) {
     log('request on %s to %s', ns, peerId.toB58String())
-    this._getPubKey(peerId, (err, peerId) => {
-      if (err) {
-        return cb(err)
-      }
 
-      log('sending request on %s to %s', ns, peerId.toB58String())
+    if (this.secure) {
+      this._getPubKey(peerId, (err, peerId) => {
+        if (err) {
+          return cb(err)
+        }
+  
+        log('sending request on %s to %s', ns, peerId.toB58String())
+        this._rpc('request', peerId, ns, data, cb)
+      })
+    } else {
       this._rpc('request', peerId, ns, data, cb)
-    })
+    }
   }
 }
 
