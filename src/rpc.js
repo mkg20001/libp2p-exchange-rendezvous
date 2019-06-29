@@ -9,11 +9,32 @@ const Pushable = require('pull-pushable')
 const pull = require('pull-stream')
 const {Type, ErrorType, ETABLE} = require('./proto.js')
 const Id = require('peer-id')
-const once = require('once')
-const wrap = (cb) => {
-  cb = once(cb)
-  setTimeout(() => cb(new Error('Timeout')), 10 * 1000)
-  return cb
+
+const prom = (fnc) => new Promise((resolve, reject) => fnc((err, res) => err ? reject(err) : resolve(res)))
+const defer = () => {
+  let _resolve
+  let _reject
+
+  let fired = false
+  function lock (d) {
+    if (fired) {
+      throw new Error('already fired!')
+    }
+    fired = false
+
+    d()
+  }
+
+  let prom = new Promise((resolve, reject) => {
+    _resolve = resolve
+    _reject = reject
+  })
+
+  prom.resolve = (...a) => process.nextTick(() => lock(() => _resolve(...a)))
+  prom.reject = (...a) => process.nextTick(() => lock(() => _reject(...a)))
+  setTimeout(() => prom.reject(new Error('Timeout')), 10 * 1000)
+
+  return prom
 }
 
 module.exports = (myId, requestHandler, secure) => {
@@ -23,116 +44,123 @@ module.exports = (myId, requestHandler, secure) => {
   let id = 1
 
   const source = Pushable()
-  const sink = pull.drain(data => {
-    log('got %s %s', data.type, data.id)
+  const sink = pull.drain(async data => { // eslint-disable-line complexity
+    log('got %s %s', data.type, data.id) // TODO: make this madness a bit more logical
 
     switch (data.type) {
       case Type.ID_LOOKUP: {
-        let cb = cbs[data.id]
-        if (cb && cb.requestedId) {
+        let prom = cbs[data.id]
+        if (prom && prom.requestedId) {
           delete cbs[data.id]
 
           log('got id lookup response %s', data.id)
 
-          if (data.error) {
-            return cb(new Error(ETABLE[data.error] || 'N/A'))
+          let id
+
+          try {
+            if (data.error) {
+              throw new Error(ETABLE[data.error] || 'N/A')
+            }
+
+            id = await prom(cb => Id.createFromProtobuf(data.remote, cb))
+            if (id.toB58String() !== prom.requestedId) {
+              throw new Error('Id is not matching!')
+            }
+          } catch (err) {
+            return prom.reject(err)
           }
 
-          Id.createFromProtobuf(data.remote, (err, id) => {
-            if (err) {
-              return cb(err)
-            }
-
-            if (id.toB58String() !== cb.requestedId) {
-              return cb(new Error('Id is not matching!'))
-            }
-
-            return cb(null, id)
-          })
+          return prom.resolve(id)
         }
 
         break
       }
       case Type.REQUEST: {
-        let cb = (err, res) => {
-          let out = {
-            type: Type.RESPONSE,
-            id: data.id
-          }
-
-          if (err) {
-            out.error = err
-          } else {
-            Object.assign(out, res)
-          }
-
-          source.push(out)
-        }
-
         log('got request %s', data.ns)
 
-        Id.createFromProtobuf(data.remote, (err, remoteId) => {
-          if (err) {
-            log(err)
-            return cb(ErrorType.E_NACK)
+        const doRequest = async () => {
+          let remoteId
+
+          try {
+            remoteId = await prom(cb => Id.createFromProtobuf(data.remote, cb))
+          } catch (err) {
+            log('id read err %s', err)
+            return ErrorType.E_NACK
           }
 
           if (secure) {
-            remoteId.pubKey.verify(data.data, data.signature, (err, ok) => {
-              if (err || !ok) {
-                log(err || 'Signature check failed')
-                return cb(ErrorType.E_NACK)
+            try {
+              const ok = await prom(cb => remoteId.pubKey.verify(data.data, data.signature, cb))
+              if (!ok) {
+                log('signature invalid')
+                return ErrorType.E_NACK
               }
+            } catch (err) {
+              log('signature err %s', err)
+              return ErrorType.E_NACK
+            }
 
-              myId.privKey.decrypt(data.data, (err, request) => {
-                if (err) {
-                  log(err)
-                  return cb(ErrorType.E_NACK)
-                }
+            let request
+            try {
+              request = await prom(cb => myId.privKey.decrypt(data.data, cb))
+            } catch (err) {
+              return ErrorType.E_NACK
+            }
 
-                requestHandler(data.ns, remoteId, request, (err, res) => {
-                  if (err) {
-                    log(err)
-                    return cb(ErrorType.E_NACK)
-                  }
-
-                  if (res.nack) {
-                    return cb(ErrorType.E_NACK)
-                  }
-
-                  remoteId.pubKey.encrypt(res.result, (err, result) => {
-                    if (err) {
-                      log(err)
-                      return cb(ErrorType.E_OTHER)
-                    }
-
-                    myId.privKey.sign(result, (err, signature) => {
-                      if (err) {
-                        log(err)
-                        return cb(ErrorType.E_OTHER)
-                      }
-
-                      cb(null, {data: result, signature})
-                    })
-                  })
-                })
-              })
-            })
-          } else {
-            requestHandler(data.ns, remoteId, data.data, (err, res) => {
-              if (err) {
-                log(err)
-                return cb(ErrorType.E_NACK)
-              }
-
+            let res
+            try {
+              res = requestHandler(data.ns, remoteId, request)
               if (res.nack) {
-                return cb(ErrorType.E_NACK)
+                log('request nack')
+                return ErrorType.E_NACK
+              }
+            } catch (err) {
+              log('request err %s', err)
+              return ErrorType.E_NACK
+            }
+
+            try {
+              const encrypted = await prom(cb => remoteId.pubKey.encrypt(res.result, cb))
+              const signature = await prom(cb => myId.privKey.sign(encrypted, cb))
+
+              return {data: encrypted, signature}
+            } catch (err) {
+              log('crypto error %s', err)
+            }
+          } else {
+            try {
+              const res = await requestHandler(data.ns, remoteId, data.data)
+              if (res.nack) {
+                return res.nack
               }
 
-              cb(null, {data: res.result})
-            })
+              return {data: res.result}
+            } catch (err) {
+              return ErrorType.E_NACK
+            }
           }
-        })
+        }
+
+        let out = {
+          type: Type.RESPONSE,
+          id: data.id
+        }
+
+        let res
+        try {
+          res = await doRequest()
+        } catch (err) {
+          log('internal request error %s', err)
+          res = ErrorType.E_OTHER
+        }
+
+        if (!res.data) {
+          out.error = res
+        } else {
+          Object.assign(out, res)
+        }
+
+        source.push(out)
 
         break
       }
@@ -187,13 +215,13 @@ module.exports = (myId, requestHandler, secure) => {
     sink,
     methods: {
       online: () => online,
-      lookup: (b58, cb) => {
+      lookup: async (b58) => {
         if (!online) {
-          return cb(new Error('Not online!'))
+          throw new Error('Not online!')
         }
 
         let rid = id++ * 2
-        cbs[rid] = wrap(cb)
+        cbs[rid] = defer()
         cbs[rid].requestedId = b58
 
         source.push({
@@ -201,16 +229,18 @@ module.exports = (myId, requestHandler, secure) => {
           id: rid,
           remote: Buffer.from(b58)
         })
+
+        return cbs[rid]
       },
-      request: (remoteId, ns, data, cb) => {
+      request: async (remoteId, ns, data) => {
         if (!online) {
-          return cb(new Error('Not online!'))
+          throw new Error('Not online!')
         }
 
         const sendRequest = (data, signature) => {
           let rid = id++ * 2
 
-          cbs[rid] = wrap(cb)
+          cbs[rid] = defer()
           cbs[rid].remoteId = remoteId
 
           const request = {
@@ -226,23 +256,16 @@ module.exports = (myId, requestHandler, secure) => {
           }
 
           source.push(request)
+
+          return cbs[rid]
         }
 
         if (secure) {
-          remoteId.pubKey.encrypt(data, (err, data) => {
-            if (err) {
-              return cb(err)
-            }
-
-            myId.privKey.sign(data, (err, signature) => {
-              if (err) {
-                return cb(err)
-              }
-              sendRequest(data, signature)
-            })
-          })
+          const encrypted = await prom(cb => remoteId.pubKey.encrypt(data, cb))
+          const signature = await prom(cb => myId.privKey.sign(data, cb))
+          return sendRequest(encrypted, signature)
         } else {
-          sendRequest(data)
+          return sendRequest(data)
         }
       }
     }
