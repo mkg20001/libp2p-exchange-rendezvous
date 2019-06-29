@@ -28,7 +28,7 @@ class Exchange extends ExchangeBase {
     this.rpc = []
   }
 
-  start (cb) {
+  start () {
     if (this.server) {
       this.server.start()
     }
@@ -52,16 +52,12 @@ class Exchange extends ExchangeBase {
         this.rpc.push(rpc.methods)
       })
     })
-
-    cb()
   }
 
-  stop (cb) {
+  stop () {
     if (this.server) {
       this.server.stop()
     }
-
-    cb()
   }
 
   _rpc (call, ...args) {

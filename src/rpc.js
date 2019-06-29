@@ -176,11 +176,11 @@ module.exports = (myId, requestHandler, secure) => {
     online = false
   })
 
-  source.push({ // send this fake ID_LOOKUP as first packet so the server has our pubKey
+  /* source.push({ // send this fake ID_LOOKUP as first packet so the server has our pubKey
     type: Type.ID_LOOKUP,
     id: 0,
-    remote: myId.marshal(true)
-  })
+    remote: myId.marshal(true) // TODO: get marshal fnc merged into peer-id
+  }) */
 
   return {
     source,
