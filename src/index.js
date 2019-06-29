@@ -14,7 +14,7 @@ const {RPC} = require('./proto.js')
 
 class Exchange extends ExchangeBase {
   constructor (swarm, options) {
-    super(swarm)
+    super(swarm, 'libp2p:exchange:rendezvous')
     if (options && options.enableServer) {
       this.server = new Server(swarm, options)
     }
@@ -60,60 +60,53 @@ class Exchange extends ExchangeBase {
     }
   }
 
-  _rpc (call, ...args) {
+  async _rpc (call, ...args) {
     this.rpc = this.rpc.filter(r => r.online()) // remove disconnected peers
-    const cb = args.pop()
 
     if (!this.rpc.length) {
-      return cb(new Error('No rendezvous-points connected!'))
+      throw new Error('No rendezvous-points connected!')
     }
 
     let list = this.rpc.slice(0)
 
-    function tryPeer (rpc) {
-      rpc[call](...args, (err, res) => {
-        if (err) {
-          let next = list.shift()
-          if (!next) {
-            return cb(err)
-          } else {
-            return tryPeer(next)
-          }
+    async function tryPeer (rpc) {
+      try {
+        return rpc[call](...args)
+      } catch (err) {
+        let next = list.shift()
+        if (!next) {
+          throw err
+        } else {
+          return tryPeer(next)
         }
-
-        return cb(err, res)
-      })
+      }
     }
 
-    tryPeer(list.shift())
+    return tryPeer(list.shift())
   }
 
-  _getPubKey (id, cb) {
+  async _getPubKey (id) {
     if (id.pubKey) { // already has pubKey, nothing to do
-      return cb(null, id)
+      return id
     }
 
     // TODO: check peerBook for key, add a cache
 
     log('looking up pubKey for %s', id.toB58String())
 
-    this._rpc('lookup', id.toB58String(), cb)
+    return this._rpc('lookup', id.toB58String())
   }
 
-  request (peerId, ns, data, cb) {
+  async request (peerId, ns, data) {
     log('request on %s to %s', ns, peerId.toB58String())
 
     if (this.secure) {
-      this._getPubKey(peerId, (err, peerId) => {
-        if (err) {
-          return cb(err)
-        }
-
-        log('sending request on %s to %s', ns, peerId.toB58String())
-        this._rpc('request', peerId, ns, data, cb)
-      })
+      peerId = await this._getPubKey(peerId)
+      log('sending request on %s to %s', ns, peerId.toB58String())
+      return this._rpc('request', peerId, ns, data)
     } else {
-      this._rpc('request', peerId, ns, data, cb)
+      log('sending request on %s to %s (INSECURE)', ns, peerId.toB58String())
+      return this._rpc('request', peerId, ns, data)
     }
   }
 }

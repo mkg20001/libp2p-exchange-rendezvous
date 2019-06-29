@@ -43,7 +43,7 @@ module.exports = (myId, requestHandler, secure) => {
   let cbs = {}
   let id = 1
 
-  const source = Pushable()
+  const source = Pushable() // TODO: since we're in pull.drain, the return does nothing yet. need to be fixed. possibly need an entirely new rpc.
   const sink = pull.drain(async data => { // eslint-disable-line complexity
     log('got %s %s', data.type, data.id) // TODO: make this madness a bit more logical
 
@@ -165,31 +165,29 @@ module.exports = (myId, requestHandler, secure) => {
         break
       }
       case Type.RESPONSE: {
-        let cb = cbs[data.id]
+        let prom = cbs[data.id]
 
-        if (cb && cb.remoteId) {
+        if (prom && prom.remoteId) {
           delete cbs[data.id]
 
-          if (data.error) {
-            return cb(new Error(ETABLE[data.error] || 'N/A'))
-          }
+          try {
+            if (data.error) {
+              throw new Error(ETABLE[data.error] || 'N/A')
+            }
 
-          if (secure) {
-            cb.remoteId.pubKey.verify(data.data, data.signature, (err, ok) => {
-              if (err || !ok) {
-                return cb(err || new Error('Signature check failed'))
+            if (secure) {
+              const ok = await prom(cb => prom.remoteId.pubKey.verify(data.data, data.signature, cb))
+              if (!ok) {
+                throw new Error('Signature check failed')
               }
-
-              myId.privKey.decrypt(data.data, (err, result) => {
-                if (err) {
-                  return cb(err)
-                }
-
-                return cb(null, result)
-              })
-            })
-          } else {
-            return cb(null, data.data)
+              const result = await prom(cb => myId.privKey.decrypt(data.data, cb))
+              return result
+            } else {
+              return data.data
+            }
+          } catch (err) {
+            log('response error %s', err)
+            prom.reject(err)
           }
         }
 
