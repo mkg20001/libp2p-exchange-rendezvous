@@ -10,7 +10,6 @@ const pull = require('pull-stream')
 const {Type, ErrorType, ETABLE} = require('./proto.js')
 const Id = require('peer-id')
 
-const prom = (fnc) => new Promise((resolve, reject) => fnc((err, res) => err ? reject(err) : resolve(res)))
 const defer = () => {
   let _resolve
   let _reject
@@ -62,7 +61,7 @@ module.exports = (myId, requestHandler, secure) => {
               throw new Error(ETABLE[data.error] || 'N/A')
             }
 
-            id = await prom(cb => Id.createFromProtobuf(data.remote, cb))
+            id = await Id.createFromProtobuf(data.remote)
             if (id.toB58String() !== prom.requestedId) {
               throw new Error('Id is not matching!')
             }
@@ -82,7 +81,7 @@ module.exports = (myId, requestHandler, secure) => {
           let remoteId
 
           try {
-            remoteId = await prom(cb => Id.createFromProtobuf(data.remote, cb))
+            remoteId = await Id.createFromProtobuf(data.remote)
           } catch (err) {
             log('id read err %s', err)
             return ErrorType.E_NACK
@@ -90,7 +89,7 @@ module.exports = (myId, requestHandler, secure) => {
 
           if (secure) {
             try {
-              const ok = await prom(cb => remoteId.pubKey.verify(data.data, data.signature, cb))
+              const ok = await remoteId.pubKey.verify(data.data, data.signature)
               if (!ok) {
                 log('signature invalid')
                 return ErrorType.E_NACK
@@ -102,7 +101,7 @@ module.exports = (myId, requestHandler, secure) => {
 
             let request
             try {
-              request = await prom(cb => myId.privKey.decrypt(data.data, cb))
+              request = await myId.privKey.decrypt(data.data)
             } catch (err) {
               return ErrorType.E_NACK
             }
@@ -120,8 +119,8 @@ module.exports = (myId, requestHandler, secure) => {
             }
 
             try {
-              const encrypted = await prom(cb => remoteId.pubKey.encrypt(res.result, cb))
-              const signature = await prom(cb => myId.privKey.sign(encrypted, cb))
+              const encrypted = await remoteId.pubKey.encrypt(res.result)
+              const signature = await myId.privKey.sign(encrypted)
 
               return {data: encrypted, signature}
             } catch (err) {
@@ -176,11 +175,11 @@ module.exports = (myId, requestHandler, secure) => {
             }
 
             if (secure) {
-              const ok = await prom(cb => prom.remoteId.pubKey.verify(data.data, data.signature, cb))
+              const ok = await prom.remoteId.pubKey.verify(data.data, data.signature)
               if (!ok) {
                 throw new Error('Signature check failed')
               }
-              const result = await prom(cb => myId.privKey.decrypt(data.data, cb))
+              const result = await myId.privKey.decrypt(data.data)
               return result
             } else {
               return data.data
@@ -202,11 +201,11 @@ module.exports = (myId, requestHandler, secure) => {
     online = false
   })
 
-  /* source.push({ // send this fake ID_LOOKUP as first packet so the server has our pubKey
+  source.push({ // send this fake ID_LOOKUP as first packet so the server has our pubKey
     type: Type.ID_LOOKUP,
     id: 0,
     remote: myId.marshal(true) // TODO: get marshal fnc merged into peer-id
-  }) */
+  })
 
   return {
     source,
@@ -259,8 +258,8 @@ module.exports = (myId, requestHandler, secure) => {
         }
 
         if (secure) {
-          const encrypted = await prom(cb => remoteId.pubKey.encrypt(data, cb))
-          const signature = await prom(cb => myId.privKey.sign(data, cb))
+          const encrypted = await remoteId.pubKey.encrypt(data)
+          const signature = await myId.privKey.sign(data)
           return sendRequest(encrypted, signature)
         } else {
           return sendRequest(data)
