@@ -1,6 +1,7 @@
 'use strict'
 
 const prom = (fnc) => new Promise((resolve, reject) => fnc((err, res) => err ? reject(err) : resolve(res)))
+const wait = (i) => new Promise((resolve, reject) => setTimeout(resolve, i))
 
 module.exports = (secure) => ({
   opt: {
@@ -25,6 +26,7 @@ module.exports = (secure) => ({
   },
   before: async (eA, eB, eM) => {
     await Promise.all([eA, eB].map((e) => prom(cb => e.swarm.dial(eM.swarm.peerInfo, cb))))
+    await wait(250)
   },
   Exchange: require('../src')
 })
