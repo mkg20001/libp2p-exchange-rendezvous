@@ -1,6 +1,6 @@
 'use strict'
 
-const {parallel} = require('async')
+const prom = (fnc) => new Promise((resolve, reject) => fnc((err, res) => err ? reject(err) : resolve(res)))
 
 module.exports = (secure) => ({
   opt: {
@@ -23,15 +23,8 @@ module.exports = (secure) => ({
       enableServer: true
     }
   },
-  before: (eA, eB, eM, cb) =>
-    new Promise((resolve, reject) => {
-      parallel([eA, eB].map(e => cb => e.swarm.dial(eM.swarm.peerInfo, cb)), err => {
-        if (err) {
-          return reject(err)
-        }
-
-        setTimeout(() => resolve(), 250) // wait for peers to find server
-      })
-    }),
+  before: async (eA, eB, eM) => {
+    await Promise.all([eA, eB].map((e) => prom(cb => e.swarm.dial(eM.swarm.peerInfo, cb))))
+  },
   Exchange: require('../src')
 })
