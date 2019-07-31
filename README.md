@@ -19,12 +19,13 @@ const exchangeA = new Exchange(swarmA)
 const exchangeB = new Exchange(swarmB)
 const exchangeM = new Exchange(swarmM, {enableServer: true})
 
-exchangeA.start(() => {})
-exchangeB.start(() => {})
-exchangeM.start(() => {})
+// even though those are async, they don't do anything async. so feel free to skip await for this example
+exchangeA.start()
+exchangeB.start()
+exchangeM.start()
 
-exchangeB.listen('example', (data, cb) => {
-  return cb(null, data.reverse())
+exchangeB.listen('example', async (data) => {
+  return Buffer.from(String(data).reverse()) // reverse buffer as string and send back as buffer
 })
 
 swarmA.dial(swarmM.peerInfo, err => {
@@ -33,7 +34,7 @@ swarmA.dial(swarmM.peerInfo, err => {
   swarmB.dial(swarmM.peerInfo, err => {
     if (err) throw err
 
-    exchangeA.request(swarmB.peerInfo.id, 'example', Buffer.from('Hello World!'), console.log)
+    exchangeA.request(swarmB.peerInfo.id, 'example', Buffer.from('Hello World!')).then(console.log, console.error)
   })
 })
 ```

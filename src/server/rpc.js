@@ -27,18 +27,14 @@ module.exports = (pi, server) => {
     switch (data.type) {
       case Type.ID_LOOKUP: {
         if (!data.id) {
-          return Id.createFromProtobuf(data.remote, (err, id) => {
-            if (err) {
-              return log(err)
-            }
-
+          Id.createFromProtobuf(data.remote).then(id => {
             if (pi.id.toB58String() !== id.toB58String()) {
               return log('missmatch ID add %s !== %s', pi.id.toB58String(), id.toB58String())
             }
 
             log('added ID %s', id.toB58String())
             server.ids[pi.id.toB58String()] = data.remote
-          })
+          }, log)
         }
 
         let cb = (err, res) => {
